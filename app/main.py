@@ -27,7 +27,7 @@ from .optimizers import MEDIA_TYPES, can_optimize, optimize
 from .upload_log import FileTracker, human_size, inspect_file, log_file, log_request, request_context
 
 # Configuração via variáveis de ambiente
-MAX_UPLOAD_MB = int(os.getenv("MAX_UPLOAD_MB", "1024"))
+MAX_UPLOAD_MB = int(os.getenv("MAX_UPLOAD_MB", "4096"))
 MAX_FILES = int(os.getenv("MAX_FILES", "100"))
 # Otimização de PDF e XZ nível 9 consomem bastante CPU/RAM; limita tarefas simultâneas.
 MAX_CONCURRENT_JOBS = int(os.getenv("MAX_CONCURRENT_JOBS", "2"))

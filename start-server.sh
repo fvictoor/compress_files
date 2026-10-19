@@ -3,7 +3,7 @@
 #
 # Uso:
 #   ./start-server.sh                 # 0.0.0.0:8000
-#   PORT=9000 MAX_UPLOAD_MB=2048 ./start-server.sh
+#   PORT=9000 MAX_UPLOAD_MB=8192 ./start-server.sh
 #   FORWARDED_ALLOW_IPS=10.0.0.5 ./start-server.sh
 #   ./start-server.sh --dev           # recarrega ao salvar arquivos
 set -euo pipefail
@@ -17,13 +17,22 @@ STAMP="$VENV/.requirements.sha256"
 HOST="${HOST:-0.0.0.0}"
 PORT="${PORT:-8000}"
 FORWARDED_ALLOW_IPS="${FORWARDED_ALLOW_IPS:-127.0.0.1}"
-export MAX_UPLOAD_MB="${MAX_UPLOAD_MB:-1024}"
+export MAX_UPLOAD_MB="${MAX_UPLOAD_MB:-4096}"
 export MAX_FILES="${MAX_FILES:-100}"
 export MAX_CONCURRENT_JOBS="${MAX_CONCURRENT_JOBS:-2}"
 export LOG_RETENTION_DAYS="${LOG_RETENTION_DAYS:-90}"
 [[ -n "${LOG_DIR:-}" ]] && export LOG_DIR
 
 # 1. Ambiente virtual
+# Se o requirements.txt mudou, recria o .venv do zero: o pip não remove pacotes
+# que deixaram de ser necessários (ex.: onnxruntime trazido pelo PyMuPDF 2.0).
+HASH="$(sha256sum "$REQ" 2>/dev/null || shasum -a 256 "$REQ")"
+HASH="${HASH%% *}"
+if [[ -d "$VENV" && ( ! -f "$STAMP" || "$(cat "$STAMP")" != "$HASH" ) ]]; then
+  echo "Dependências mudaram: recriando o ambiente virtual..."
+  rm -rf "$VENV"
+fi
+
 if [[ ! -x "$PY" ]]; then
   command -v python3 >/dev/null || { echo "python3 não encontrado." >&2; exit 1; }
   python3 -c 'import sys; sys.exit(sys.version_info < (3, 10))' \
@@ -32,10 +41,8 @@ if [[ ! -x "$PY" ]]; then
   python3 -m venv "$VENV"
 fi
 
-# 2. Dependências (só reinstala quando o requirements.txt muda)
-HASH="$(sha256sum "$REQ" 2>/dev/null || shasum -a 256 "$REQ")"
-HASH="${HASH%% *}"
-if [[ ! -f "$STAMP" || "$(cat "$STAMP")" != "$HASH" ]]; then
+# 2. Dependências (instala quando o ambiente é novo)
+if [[ ! -f "$STAMP" ]]; then
   echo "Instalando dependências..."
   "$PY" -m pip install --disable-pip-version-check -q -r "$REQ"
   printf '%s' "$HASH" > "$STAMP"
