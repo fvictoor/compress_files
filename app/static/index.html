@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Compressor de Arquivos</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="card">
+    <h1>Compressor de Arquivos</h1>
+    <p class="subtitle">Envie qualquer tipo de arquivo, escolha o formato e o nível de compressão e baixe o resultado.</p>
+
+    <form id="compress-form" novalidate>
+      <div id="drop-zone" class="drop-zone">
+        <label for="files" class="drop-label">
+          <strong>Arraste arquivos aqui</strong> ou clique para selecionar
+        </label>
+        <input id="files" name="files" type="file" multiple required>
+        <ul id="file-list" class="file-list" aria-label="Arquivos selecionados"></ul>
+      </div>
+
+      <div class="field">
+        <label for="format">Formato de saída</label>
+        <select id="format" name="format" aria-describedby="format-desc"></select>
+        <p id="format-desc" class="hint"></p>
+      </div>
+
+      <div class="field">
+        <label for="level">Nível de compressão: <output id="level-value" for="level">7</output></label>
+        <input id="level" name="level" type="range" min="1" max="9" step="1" value="7"
+               aria-describedby="level-desc">
+        <div class="range-labels" aria-hidden="true"><span>Mais rápido</span><span>Máxima compressão</span></div>
+        <p id="level-desc" class="hint"></p>
+      </div>
+
+      <div class="field checkbox">
+        <input id="optimize" name="optimize_media" type="checkbox" checked aria-describedby="optimize-desc">
+        <label for="optimize">Otimizar PDFs e imagens</label>
+        <p id="optimize-desc" class="hint">Reduz a resolução e recomprime as imagens (com perda de qualidade). É o que gera reduções grandes em PDFs e fotos.</p>
+      </div>
+
+      <button id="submit" type="submit">Comprimir e baixar</button>
+
+      <div id="progress-wrap" class="progress-wrap" hidden>
+        <progress id="progress" max="100" value="0" aria-label="Progresso do envio"></progress>
+      </div>
+      <p id="status" class="status" role="status" aria-live="polite"></p>
+      <p id="error" class="error" role="alert"></p>
+    </form>
+
+    <p class="note">PDF, JPG, PNG e WebP são otimizados no próprio formato. Demais arquivos (textos, planilhas, bancos de dados, executáveis) recebem compressão sem perdas; vídeos, áudios e arquivos ZIP já vêm comprimidos e quase não diminuem.</p>
+  </main>
+  <script src="app.js"></script>
+</body>
+</html>
