@@ -69,7 +69,7 @@
       levelInput.max = config.maxLevel;
       updateFormatHint();
     } catch {
-      setError("Não foi possível carregar a configuração do servidor.");
+      setError("Não foi possível carregar a configuração do aplicativo.");
     }
   }
 
@@ -143,7 +143,7 @@
     };
     xhr.upload.onload = () => {
       progress.removeAttribute("value"); // barra indeterminada enquanto comprime
-      setStatus("Comprimindo no servidor…");
+      setStatus("Comprimindo…");
     };
 
     xhr.onload = async () => {
@@ -168,7 +168,7 @@
       submitBtn.disabled = false;
       progressWrap.hidden = true;
       setStatus("");
-      setError("Falha de conexão com o servidor.");
+      setError("Falha de conexão com o aplicativo.");
     };
 
     xhr.send(data);
@@ -188,6 +188,19 @@
   levelInput.addEventListener("input", updateLevelHint);
   formatSelect.addEventListener("change", updateFormatHint);
   form.addEventListener("submit", onSubmit);
+
+  // Mantém o aplicativo vivo enquanto a página estiver aberta; ao fechar a aba ele encerra.
+  const CLOSED_MSG = "O aplicativo foi encerrado. Abra o executável novamente para continuar.";
+  const session = new EventSource("/api/session");
+  session.onopen = () => {
+    submitBtn.disabled = false;
+    if (errorEl.textContent === CLOSED_MSG) setError("");
+  };
+  session.onerror = () => {
+    if (session.readyState === EventSource.OPEN) return;
+    submitBtn.disabled = true;
+    setError(CLOSED_MSG);
+  };
 
   updateLevelHint();
   loadConfig();

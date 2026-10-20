@@ -1,6 +1,7 @@
 """Servidor web de compressão de arquivos.
 
-Executar:  uvicorn app.main:app --host 0.0.0.0 --port 8000
+Uso local (abre o navegador e encerra ao fechar a página):  python launcher.py
+Modo servidor:  uvicorn app.main:app --host 0.0.0.0 --port 8000
 """
 
 from __future__ import annotations
@@ -17,7 +18,7 @@ from pathlib import Path
 from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.exception_handlers import request_validation_exception_handler
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.background import BackgroundTask
 from starlette.concurrency import run_in_threadpool
@@ -42,6 +43,31 @@ AUTO_FALLBACK = "zip"
 
 app = FastAPI(title="Compressor de Arquivos")
 _job_slots = asyncio.Semaphore(MAX_CONCURRENT_JOBS)
+
+
+class Sessions:
+    """Abas do navegador com a página aberta (usado pelo launcher para encerrar o app)."""
+
+    def __init__(self) -> None:
+        self.active = 0
+        self.seen = False  # alguma aba já se conectou
+        self._last_change = time.monotonic()
+
+    def connect(self) -> None:
+        self.active += 1
+        self.seen = True
+        self._last_change = time.monotonic()
+
+    def disconnect(self) -> None:
+        self.active -= 1
+        self._last_change = time.monotonic()
+
+    def idle_seconds(self) -> float:
+        """Há quanto tempo não existe nenhuma aba aberta (0 se houver alguma)."""
+        return 0.0 if self.active else time.monotonic() - self._last_change
+
+
+sessions = Sessions()
 
 
 @app.middleware("http")
@@ -163,6 +189,25 @@ async def get_config():
         "maxUploadMb": MAX_UPLOAD_MB,
         "maxFiles": MAX_FILES,
     }
+
+
+@app.get("/api/session")
+async def session(request: Request):
+    """Conexão SSE mantida aberta enquanto a página estiver aberta."""
+
+    async def stream():
+        sessions.connect()
+        try:
+            yield "retry: 2000\n\n"
+            while not await request.is_disconnected():
+                yield ": ping\n\n"
+                await asyncio.sleep(5)
+        finally:
+            sessions.disconnect()
+
+    return StreamingResponse(
+        stream(), media_type="text/event-stream", headers={"Cache-Control": "no-cache"}
+    )
 
 
 def _ms(since: float) -> float:
